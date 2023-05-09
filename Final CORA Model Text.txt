@@ -1,0 +1,78 @@
+model {
+    # Specify priors
+    alpha ~ dnorm(0, 0.01)
+    beta0 ~ dnorm(0,0.01)
+    beta.juoc ~ dnorm(0, 0.01)
+    beta.water ~ dnorm(0, 0.01)
+    beta.tri ~ dnorm(0, 0.01)
+
+    for (k in 1:(nyear-1)){
+    a.col[k] ~ dnorm(0, 0.01)
+    b.ext[k] ~ dnorm(0, 0.01)
+    alpha.det[k] ~ dnorm(0,0.01)
+    }
+    alpha.det[nyear] ~ dnorm(0,0.01)
+    
+    #beta.treatment[1]<- 0
+    #for(i in 2:3){
+    #beta.treatment[i] ~ dnorm(0,0.01)
+    #}
+    # Ecological submodel: Define state conditional on parameters
+    for (i in 1:nsite){
+    logit(psi1[i,1])<- alpha + beta.juoc*rr100[i,1] + beta.water*water[i,1]
+    z[i,1] ~ dbern(psi1[i,1]) 
+    for (k in 2:nyear){
+    logit(muZ[i,k])<- a.col[k-1] + b.ext[k-1]*z[i,k-1] + beta.juoc*rr100[i,k] + beta.water*water[i,1]
+    z[i,k]~ dbern(muZ[i,k])
+    
+    } #k
+    } #i
+    # Observation model
+    for (i in 1:nsite){
+    for (j in 1:nrep){
+    for (k in 1:nyear){
+    y[i,j,k] ~ dbern(muy[i,j,k])
+    muy[i,j,k]<- z[i,k]*p[i,j,k]
+    logit(p[i,j,k])<-alpha.det[k] + beta.tri*tri[i,j,k]
+    y.new[i,j,k] ~  dbern(muy[i,j,k]) # sample new observation # posterier predictive distribution
+    log.lik[i,j,k]  <- logdensity.bin(y[i,j,k],muy[i,j,k],1) 
+    log.lik.new[i,j,k]  <- logdensity.bin(y.new[i,j,k],muy[i,j,k],1) # for p-value
+    
+    } #k
+    } #j
+    log.lik.cum[i] <- sum(log.lik[i,,])
+    } #i
+      mean.p[1]<- exp(alpha.det[1]) / (1 + exp(alpha.det[1]))
+  for(j in 2:nyear){
+    mean.p[j]<- exp(alpha.det[j]) / (1 + exp(alpha.det[j]))
+  }
+    n.occ[1]<-sum(z[1:nsite,1])
+    for (k in 2:nyear){
+    n.occ[k] <- sum(z[1:nsite,k])
+    }
+        for (i in 1:nsite){
+      for(k in 1:4){
+    cell.obs[i,k] <- sum(y[i,,k])
+    cell.new[i,k] <- sum(y.new[i,,k])
+    cell.exp[i,k] <- sum(p[i,,k])
+    cell.d.obs[i,k] <- (cell.obs[i,k]^0.5 - cell.exp[i,k]^0.5)^2
+    cell.d.new[i,k] <- (cell.new[i,k]^0.5 - cell.exp[i,k]^0.5)^2
+      }
+        }
+    alpha.vec[1]<-ilogit(alpha) #mean psi at avg covariate conditions
+    psi.vec[1]<-ilogit(beta0) #mean psi at avg covariate conditions
+    D.obs <- sum(cell.d.obs[,])
+    D.new <- sum(cell.d.new[,])
+    p.val <- (D.obs < D.new)
+    for(j in 2:nyear-1){
+      phi[j]<-ilogit(a.col[j]+b.ext[j])
+      gamma[j]<-ilogit(a.col[j])
+ 
+ }
+
+    for(j in 2:nyear){
+      psi.vec[j]<-psi.vec[j-1]*phi[j-1] + (1-psi.vec[j-1])*gamma[j-1]  
+      turnover[j-1]<- ((1 - psi.vec[j-1]) * gamma[j-1])/( (1 - psi.vec[j-1]) * gamma[j-1] + phi[j-1]*psi.vec[j-1])
+      }
+    } #end of model
+    
