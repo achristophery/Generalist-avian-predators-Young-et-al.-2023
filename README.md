@@ -1,4 +1,4 @@
-# Implications-of-tree-expansion-in-shrubland-ecosystems-on-two-generalist-avian-predators.
+# Implications-of-tree-expansion-in-shrubland-ecosystems-for-two-generalist-avian-predators.
 Data and code for Young et al. 2023 PLOS one
 
 # __Abstract:__
